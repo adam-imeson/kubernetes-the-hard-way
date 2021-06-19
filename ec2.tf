@@ -15,7 +15,7 @@ resource "local_file" "instance_private_key_pem" {
 
 resource "aws_instance" "controller" {
   # kubernetes controllers
-  count         = 3
+  count         = var.instance_count
 
   ami           = data.aws_ami.ubuntu_server_20.id
   instance_type = "m5.xlarge"
@@ -43,7 +43,7 @@ resource "aws_instance" "controller" {
 
 resource "aws_instance" "worker" {
   # kubernetes workers
-  count         = 3
+  count         = var.instance_count
 
   ami           = data.aws_ami.ubuntu_server_20.id
   instance_type = "m5.xlarge"

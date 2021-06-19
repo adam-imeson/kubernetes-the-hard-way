@@ -68,13 +68,13 @@ resource "local_file" "admin_pem" {
 }
 
 resource "tls_private_key" "worker_key" {
-  count = 3
+  count = var.instance_count
   algorithm = local.ca_key_algorithm
   rsa_bits  = 2048
 }
 
 resource "tls_cert_request" "worker_request" {
-  count = 3
+  count = var.instance_count
   key_algorithm   = local.ca_key_algorithm
   private_key_pem = tls_private_key.worker_key[count.index].private_key_pem
   ip_addresses = [
@@ -93,7 +93,7 @@ resource "tls_cert_request" "worker_request" {
 }
 
 resource "tls_locally_signed_cert" "worker_cert" {
-  count = 3
+  count = var.instance_count
   cert_request_pem   = tls_cert_request.worker_request[count.index].cert_request_pem
   ca_key_algorithm   = local.ca_key_algorithm
   ca_private_key_pem = tls_private_key.ca_root_key.private_key_pem
@@ -110,13 +110,13 @@ resource "tls_locally_signed_cert" "worker_cert" {
 }
 
 resource "local_file" "worker_key_pem" {
-  count = 3
+  count = var.instance_count
   content = tls_private_key.worker_key[count.index].private_key_pem
   filename = "${local.key_directory}/worker-${count.index}-key.pem"
 }
 
 resource "local_file" "worker_pem" {
-  count = 3
+  count = var.instance_count
   content = tls_locally_signed_cert.worker_cert[count.index].cert_pem
   filename = "${local.key_directory}/worker-${count.index}.pem"
 }
