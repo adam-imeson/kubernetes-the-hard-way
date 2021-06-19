@@ -318,10 +318,10 @@ resource "tls_locally_signed_cert" "api_server_cert" {
 
 resource "local_file" "api_server_key_pem" {
   content = tls_private_key.api_server_key.private_key_pem
-  filename = "kubernetes-key.pem"
+  filename = "${local.key_directory}/kubernetes-key.pem"
 }
 
 resource "local_file" "api_server_pem" {
   content = tls_locally_signed_cert.api_server_cert.cert_pem
-  filename = "kubernetes.pem"
+  filename = "${local.key_directory}/kubernetes.pem"
 }
