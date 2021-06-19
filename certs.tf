@@ -1,3 +1,5 @@
+### creates CA
+
 resource "tls_private_key" "ca_root_key" {
   algorithm = local.ca_key_algorithm
   rsa_bits  = 2048
@@ -324,4 +326,51 @@ resource "local_file" "api_server_key_pem" {
 resource "local_file" "api_server_pem" {
   content = tls_locally_signed_cert.api_server_cert.cert_pem
   filename = "${local.key_directory}/kubernetes.pem"
+}
+
+### service account key pair
+
+resource "tls_private_key" "service_account_key" {
+  algorithm = local.ca_key_algorithm
+  rsa_bits  = 2048
+}
+
+resource "tls_cert_request" "service_account_request" {
+  key_algorithm   = local.ca_key_algorithm
+  private_key_pem = tls_private_key.service_account_key.private_key_pem
+
+  subject {
+    common_name  = "service-accounts"
+    organization = "Kubernetes"
+    organizational_unit = "Kubernetes The Hard Way"
+    country = local.country
+    province = local.province
+    locality = local.locality
+  }
+}
+
+resource "tls_locally_signed_cert" "service_account_cert" {
+  cert_request_pem   = tls_cert_request.service_account_request.cert_request_pem
+  ca_key_algorithm   = local.ca_key_algorithm
+  ca_private_key_pem = tls_private_key.ca_root_key.private_key_pem
+  ca_cert_pem        = tls_self_signed_cert.ca_root.cert_pem
+
+  validity_period_hours = 8760
+
+  allowed_uses = [
+    "key_encipherment",
+    "digital_signature",
+    "server_auth",
+    "client_auth"
+  ]
+}
+
+resource "local_file" "service_account_pem" {
+  content = tls_private_key.service_account_key.private_key_pem
+  filename = "${local.key_directory}/service-account-key.pem"
+}
+
+resource "local_file" "service_account_key" {
+  content = tls_locally_signed_cert.service_account_cert.cert_pem
+  filename = "${local.key_directory}/service-account.pem"
 }
