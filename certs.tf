@@ -265,3 +265,63 @@ resource "local_file" "scheduler_key" {
   content = tls_locally_signed_cert.scheduler_cert.cert_pem
   filename = "${local.key_directory}/kube-scheduler.pem"
 }
+
+### kubernetes api server cert
+
+resource "tls_private_key" "api_server_key" {
+  algorithm = local.ca_key_algorithm
+  rsa_bits  = 2048
+}
+
+resource "tls_cert_request" "api_server_request" {
+  key_algorithm   = local.ca_key_algorithm
+  private_key_pem = tls_private_key.api_server_key.private_key_pem
+  ip_addresses = concat(aws_instance.controller.*.private_ip, [
+    aws_eip.lb_eip.public_ip,
+    "10.32.0.1",
+    "127.0.0.1"
+  ])
+
+  dns_names = [
+    "kubernetes",
+    "kubernetes.default",
+    "kubernetes.default.svc",
+    "kubernetes.default.svc.cluster",
+    "kubernetes.svc.cluster.local"
+  ]
+
+  subject {
+    common_name  = "kubernetes"
+    organization = "Kubernetes"
+    organizational_unit = "Kubernetes The Hard Way"
+    country = local.country
+    province = local.province
+    locality = local.locality
+  }
+}
+
+resource "tls_locally_signed_cert" "api_server_cert" {
+  cert_request_pem   = tls_cert_request.api_server_request.cert_request_pem
+  ca_key_algorithm   = local.ca_key_algorithm
+  ca_private_key_pem = tls_private_key.ca_root_key.private_key_pem
+  ca_cert_pem        = tls_self_signed_cert.ca_root.cert_pem
+
+  validity_period_hours = 8760
+
+  allowed_uses = [
+    "key_encipherment",
+    "digital_signature",
+    "server_auth",
+    "client_auth"
+  ]
+}
+
+resource "local_file" "api_server_key_pem" {
+  content = tls_private_key.api_server_key.private_key_pem
+  filename = "kubernetes-key.pem"
+}
+
+resource "local_file" "api_server_pem" {
+  content = tls_locally_signed_cert.api_server_cert.cert_pem
+  filename = "kubernetes.pem"
+}
