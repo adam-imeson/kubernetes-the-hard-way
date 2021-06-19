@@ -3,6 +3,7 @@ locals {
   country = "US"
   locality = "Seattle"
   province = "Washington"
+  key_directory = "keys"
 }
 
 resource "tls_private_key" "ca_root_key" {
@@ -71,7 +72,7 @@ resource "tls_locally_signed_cert" "admin_cert" {
 
 resource "local_file" "admin_pem" {
   content = tls_locally_signed_cert.admin_cert.cert_pem
-  filename = "admin.pem"
+  filename = "${local.key_directory}/admin.pem"
 }
 
 resource "tls_private_key" "worker_key" {
@@ -119,13 +120,13 @@ resource "tls_locally_signed_cert" "worker_cert" {
 resource "local_file" "worker_key_pem" {
   count = 3
   content = tls_private_key.worker_key[count.index].private_key_pem
-  filename = "worker-${count.index}-key.pem"
+  filename = "${local.key_directory}/worker-${count.index}-key.pem"
 }
 
 resource "local_file" "worker_pem" {
   count = 3
   content = tls_locally_signed_cert.worker_cert[count.index].cert_pem
-  filename = "worker-${count.index}.pem"
+  filename = "${local.key_directory}/worker-${count.index}.pem"
 }
 
 resource "tls_private_key" "controller_manager_key" {
@@ -165,10 +166,10 @@ resource "tls_locally_signed_cert" "controller_manager_cert" {
 
 resource "local_file" "controller_manager_pem" {
   content = tls_private_key.controller_manager_key.private_key_pem
-  filename = "kube-controller-manager-key.pem"
+  filename = "${local.key_directory}/kube-controller-manager-key.pem"
 }
 
 resource "local_file" "controller_manager_key" {
   content = tls_locally_signed_cert.controller_manager_cert.cert_pem
-  filename = "kube-controller-manager.pem"
+  filename = "${local.key_directory}/kube-controller-manager.pem"
 }
