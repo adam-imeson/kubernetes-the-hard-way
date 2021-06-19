@@ -27,6 +27,8 @@ resource "tls_self_signed_cert" "ca_root" {
   ]
 }
 
+### admin client cert
+
 resource "tls_private_key" "admin_key" {
   algorithm = local.ca_key_algorithm
   rsa_bits  = 2048
@@ -66,6 +68,8 @@ resource "local_file" "admin_pem" {
   content = tls_locally_signed_cert.admin_cert.cert_pem
   filename = "${local.key_directory}/admin.pem"
 }
+
+### kubelet client certs
 
 resource "tls_private_key" "worker_key" {
   count = var.instance_count
@@ -121,6 +125,8 @@ resource "local_file" "worker_pem" {
   filename = "${local.key_directory}/worker-${count.index}.pem"
 }
 
+### controller manager client cert
+
 resource "tls_private_key" "controller_manager_key" {
   algorithm = local.ca_key_algorithm
   rsa_bits  = 2048
@@ -164,4 +170,98 @@ resource "local_file" "controller_manager_pem" {
 resource "local_file" "controller_manager_key" {
   content = tls_locally_signed_cert.controller_manager_cert.cert_pem
   filename = "${local.key_directory}/kube-controller-manager.pem"
+}
+
+### kube proxy client cert
+
+resource "tls_private_key" "kube_proxy_key" {
+  algorithm = local.ca_key_algorithm
+  rsa_bits  = 2048
+}
+
+resource "tls_cert_request" "kube_proxy_request" {
+  key_algorithm   = local.ca_key_algorithm
+  private_key_pem = tls_private_key.kube_proxy_key.private_key_pem
+
+  subject {
+    common_name  = "system:kube-proxy"
+    organization = "system:node-proxier"
+    organizational_unit = "Kubernetes The Hard Way"
+    country = local.country
+    province = local.province
+    locality = local.locality
+  }
+}
+
+resource "tls_locally_signed_cert" "kube_proxy_cert" {
+  cert_request_pem   = tls_cert_request.kube_proxy_request.cert_request_pem
+  ca_key_algorithm   = local.ca_key_algorithm
+  ca_private_key_pem = tls_private_key.ca_root_key.private_key_pem
+  ca_cert_pem        = tls_self_signed_cert.ca_root.cert_pem
+
+  validity_period_hours = 8760
+
+  allowed_uses = [
+    "key_encipherment",
+    "digital_signature",
+    "server_auth",
+    "client_auth"
+  ]
+}
+
+resource "local_file" "kube_proxy_pem" {
+  content = tls_private_key.kube_proxy_key.private_key_pem
+  filename = "${local.key_directory}/kube-proxy-key.pem"
+}
+
+resource "local_file" "kube_proxy_key" {
+  content = tls_locally_signed_cert.kube_proxy_cert.cert_pem
+  filename = "${local.key_directory}/kube-proxy.pem"
+}
+
+### scheduler client cert
+
+resource "tls_private_key" "scheduler_key" {
+  algorithm = local.ca_key_algorithm
+  rsa_bits  = 2048
+}
+
+resource "tls_cert_request" "scheduler_request" {
+  key_algorithm   = local.ca_key_algorithm
+  private_key_pem = tls_private_key.scheduler_key.private_key_pem
+
+  subject {
+    common_name  = "system:kube-scheduler"
+    organization = "system:kube-scheduler"
+    organizational_unit = "Kubernetes The Hard Way"
+    country = local.country
+    province = local.province
+    locality = local.locality
+  }
+}
+
+resource "tls_locally_signed_cert" "scheduler_cert" {
+  cert_request_pem   = tls_cert_request.scheduler_request.cert_request_pem
+  ca_key_algorithm   = local.ca_key_algorithm
+  ca_private_key_pem = tls_private_key.ca_root_key.private_key_pem
+  ca_cert_pem        = tls_self_signed_cert.ca_root.cert_pem
+
+  validity_period_hours = 8760
+
+  allowed_uses = [
+    "key_encipherment",
+    "digital_signature",
+    "server_auth",
+    "client_auth"
+  ]
+}
+
+resource "local_file" "scheduler_pem" {
+  content = tls_private_key.scheduler_key.private_key_pem
+  filename = "${local.key_directory}/kube-scheduler-key.pem"
+}
+
+resource "local_file" "scheduler_key" {
+  content = tls_locally_signed_cert.scheduler_cert.cert_pem
+  filename = "${local.key_directory}/kube-scheduler.pem"
 }
