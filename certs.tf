@@ -65,6 +65,7 @@ resource "tls_locally_signed_cert" "admin_cert" {
     "key_encipherment",
     "digital_signature",
     "server_auth",
+    "client_auth"
   ]
 }
 
@@ -111,6 +112,7 @@ resource "tls_locally_signed_cert" "worker_cert" {
     "key_encipherment",
     "digital_signature",
     "server_auth",
+    "client_auth"
   ]
 }
 
@@ -124,4 +126,49 @@ resource "local_file" "worker_pem" {
   count = 3
   content = tls_locally_signed_cert.worker_cert[count.index].cert_pem
   filename = "worker-${count.index}.pem"
+}
+
+resource "tls_private_key" "controller_manager_key" {
+  algorithm = local.ca_key_algorithm
+  rsa_bits  = 2048
+}
+
+resource "tls_cert_request" "controller_manager_request" {
+  key_algorithm   = local.ca_key_algorithm
+  private_key_pem = tls_private_key.controller_manager_key.private_key_pem
+
+  subject {
+    common_name  = "system:kube-controller-manager"
+    organization = "system:kube-controller-manager"
+    organizational_unit = "Kubernetes The Hard Way"
+    country = local.country
+    province = local.province
+    locality = local.locality
+  }
+}
+
+resource "tls_locally_signed_cert" "controller_manager_cert" {
+  cert_request_pem   = tls_cert_request.controller_manager_request.cert_request_pem
+  ca_key_algorithm   = local.ca_key_algorithm
+  ca_private_key_pem = tls_private_key.ca_root_key.private_key_pem
+  ca_cert_pem        = tls_self_signed_cert.ca_root.cert_pem
+
+  validity_period_hours = 8760
+
+  allowed_uses = [
+    "key_encipherment",
+    "digital_signature",
+    "server_auth",
+    "client_auth"
+  ]
+}
+
+resource "local_file" "controller_manager_pem" {
+  content = tls_private_key.controller_manager_key.private_key_pem
+  filename = "kube-controller-manager-key.pem"
+}
+
+resource "local_file" "controller_manager_key" {
+  content = tls_locally_signed_cert.controller_manager_cert.cert_pem
+  filename = "kube-controller-manager.pem"
 }
