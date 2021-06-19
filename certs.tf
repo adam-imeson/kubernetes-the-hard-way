@@ -1,11 +1,3 @@
-locals {
-  ca_key_algorithm = "RSA"
-  country = "US"
-  locality = "Seattle"
-  province = "Washington"
-  key_directory = "keys"
-}
-
 resource "tls_private_key" "ca_root_key" {
   algorithm = local.ca_key_algorithm
   rsa_bits  = 2048

@@ -10,7 +10,7 @@ resource "aws_key_pair" "kubernetes" {
 
 resource "local_file" "instance_private_key_pem" {
   content = tls_private_key.kubernetes.private_key_pem
-  filename = "${aws_key_pair.kubernetes.key_name}.pem"
+  filename = "${local.key_directory}/${aws_key_pair.kubernetes.key_name}.pem"
 }
 
 resource "aws_instance" "controller" {

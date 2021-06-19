@@ -2,11 +2,6 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
-locals {
-  region_az_1 = coalesce(data.aws_availability_zones.available.names...)
-  region_az_2 = coalesce(setsubtract(data.aws_availability_zones.available.names, [local.region_az_1])...)
-}
-
 resource "aws_vpc" "main_vpc" {
   cidr_block           = "10.64.0.0/16"
   enable_dns_support   = true
