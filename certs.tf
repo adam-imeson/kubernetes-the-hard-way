@@ -72,3 +72,56 @@ resource "local_file" "admin_pem" {
   content = tls_locally_signed_cert.admin_cert.cert_pem
   filename = "admin.pem"
 }
+
+resource "tls_private_key" "worker_key" {
+  count = 3
+  algorithm = local.ca_key_algorithm
+  rsa_bits  = 2048
+}
+
+resource "tls_cert_request" "worker_request" {
+  count = 3
+  key_algorithm   = local.ca_key_algorithm
+  private_key_pem = tls_private_key.worker_key[count.index].private_key_pem
+  ip_addresses = [
+    aws_instance.worker[count.index].private_ip,
+    aws_instance.worker[count.index].public_ip
+  ]
+
+  subject {
+    common_name  = "system:node:worker-${count.index}"
+    organization = "system:nodes"
+    organizational_unit = "Kubernetes The Hard Way"
+    country = local.country
+    province = local.province
+    locality = local.locality
+  }
+}
+
+resource "tls_locally_signed_cert" "worker_cert" {
+  count = 3
+  cert_request_pem   = tls_cert_request.worker_request[count.index].cert_request_pem
+  ca_key_algorithm   = local.ca_key_algorithm
+  ca_private_key_pem = tls_private_key.ca_root_key.private_key_pem
+  ca_cert_pem        = tls_self_signed_cert.ca_root.cert_pem
+
+  validity_period_hours = 8760
+
+  allowed_uses = [
+    "key_encipherment",
+    "digital_signature",
+    "server_auth",
+  ]
+}
+
+resource "local_file" "worker_key_pem" {
+  count = 3
+  content = tls_private_key.worker_key[count.index].private_key_pem
+  filename = "worker-${count.index}-key.pem"
+}
+
+resource "local_file" "worker_pem" {
+  count = 3
+  content = tls_locally_signed_cert.worker_cert[count.index].cert_pem
+  filename = "worker-${count.index}.pem"
+}
