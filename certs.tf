@@ -29,6 +29,16 @@ resource "tls_self_signed_cert" "ca_root" {
   ]
 }
 
+resource "local_file" "ca_key_pem" {
+  content = tls_private_key.ca_root_key.private_key_pem
+  filename = "${local.key_directory}/controller/ca-key.pem"
+}
+
+resource "local_file" "ca_pem" {
+  content = tls_self_signed_cert.ca_root.cert_pem
+  filename = "${local.key_directory}/controller/ca.pem"
+}
+
 ### admin client cert
 
 resource "tls_private_key" "admin_key" {
@@ -118,13 +128,13 @@ resource "tls_locally_signed_cert" "worker_cert" {
 resource "local_file" "worker_key_pem" {
   count = var.instance_count
   content = tls_private_key.worker_key[count.index].private_key_pem
-  filename = "${local.key_directory}/worker-${count.index}-key.pem"
+  filename = "${local.key_directory}/worker/worker-${count.index}-key.pem"
 }
 
 resource "local_file" "worker_pem" {
   count = var.instance_count
   content = tls_locally_signed_cert.worker_cert[count.index].cert_pem
-  filename = "${local.key_directory}/worker-${count.index}.pem"
+  filename = "${local.key_directory}/worker/worker-${count.index}.pem"
 }
 
 ### controller manager client cert
@@ -320,12 +330,12 @@ resource "tls_locally_signed_cert" "api_server_cert" {
 
 resource "local_file" "api_server_key_pem" {
   content = tls_private_key.api_server_key.private_key_pem
-  filename = "${local.key_directory}/kubernetes-key.pem"
+  filename = "${local.key_directory}/controller/kubernetes-key.pem"
 }
 
 resource "local_file" "api_server_pem" {
   content = tls_locally_signed_cert.api_server_cert.cert_pem
-  filename = "${local.key_directory}/kubernetes.pem"
+  filename = "${local.key_directory}/controller/kubernetes.pem"
 }
 
 ### service account key pair
@@ -367,10 +377,52 @@ resource "tls_locally_signed_cert" "service_account_cert" {
 
 resource "local_file" "service_account_pem" {
   content = tls_private_key.service_account_key.private_key_pem
-  filename = "${local.key_directory}/service-account-key.pem"
+  filename = "${local.key_directory}/controller/service-account-key.pem"
 }
 
 resource "local_file" "service_account_key" {
   content = tls_locally_signed_cert.service_account_cert.cert_pem
-  filename = "${local.key_directory}/service-account.pem"
+  filename = "${local.key_directory}/controller/service-account.pem"
+}
+
+### put the certs on the servers
+
+resource "null_resource" "worker_scp" {
+  count = var.instance_count
+  
+  triggers = {
+    worker_instance_id = aws_instance.worker[count.index].id
+  }
+
+  # would be better to define the file prefixes/suffixes in local variables
+  # because this copy command needs to be kept in sync with the file creation paths
+  provisioner "local-exec" {
+    command = "scp -r -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ${local_file.instance_private_key_pem.filename} ${local.key_directory}/worker/worker-${count.index}* ubuntu@${aws_instance.worker[count.index].public_dns}:~/"
+  }
+
+  depends_on = [
+    local_file.worker_key_pem,
+    local_file.worker_pem
+  ]
+}
+
+resource "null_resource" "controller_scp" {
+  count = var.instance_count
+  
+  triggers = {
+    controller_instance_id = aws_instance.controller[count.index].id
+  }
+
+  provisioner "local-exec" {
+    command = "scp -r -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ${local_file.instance_private_key_pem.filename} ${local.key_directory}/controller/* ubuntu@${aws_instance.controller[count.index].public_dns}:~/"
+  }
+
+  depends_on = [
+    local_file.ca_key_pem,
+    local_file.ca_pem,
+    local_file.api_server_key_pem,
+    local_file.api_server_pem,
+    local_file.service_account_pem,
+    local_file.service_account_key
+  ]
 }

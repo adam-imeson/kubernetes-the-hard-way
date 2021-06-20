@@ -11,6 +11,7 @@ resource "aws_key_pair" "kubernetes" {
 resource "local_file" "instance_private_key_pem" {
   content = tls_private_key.kubernetes.private_key_pem
   filename = "${local.key_directory}/${aws_key_pair.kubernetes.key_name}.pem"
+  file_permission = "0400"
 }
 
 resource "aws_instance" "controller" {
@@ -21,7 +22,7 @@ resource "aws_instance" "controller" {
   instance_type = "m5.xlarge"
   subnet_id     = aws_subnet.main_az_1_public.id
   source_dest_check = false
-  key_name = aws_key_pair.kubernetes.key_name
+  key_name      = aws_key_pair.kubernetes.key_name
   vpc_security_group_ids = [
     aws_security_group.main.id,
     aws_security_group.alpha.id,
@@ -49,7 +50,7 @@ resource "aws_instance" "worker" {
   instance_type = "m5.xlarge"
   subnet_id     = aws_subnet.main_az_1_public.id
   source_dest_check = false
-  key_name = aws_key_pair.kubernetes.key_name
+  key_name      = aws_key_pair.kubernetes.key_name
   vpc_security_group_ids = [
     aws_security_group.main.id,
     aws_security_group.alpha.id,
