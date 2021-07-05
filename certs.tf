@@ -387,6 +387,8 @@ resource "local_file" "service_account_key" {
 
 ### put the certs on the servers
 
+# TODO: there's probably a way to use the file provisioner instead of this local-exec scp thing i'm doing
+
 resource "null_resource" "worker_scp" {
   count = var.instance_count
   

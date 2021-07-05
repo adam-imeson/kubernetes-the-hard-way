@@ -9,6 +9,7 @@ variable "username" {
   default = "kubeboot"
 }
 
+# TODO: this should be split into two separate vars, one for the controller instance count and one for the worker instance count
 variable "instance_count" {
   type = number
   description = "The number of worker nodes and the number of controller nodes to launch."

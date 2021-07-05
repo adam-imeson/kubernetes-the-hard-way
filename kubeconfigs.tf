@@ -165,8 +165,6 @@ resource "null_resource" "worker_kubeconfig_scp" {
     worker_instance_id = aws_instance.worker[count.index].id
   }
 
-  # would be better to define the file prefixes/suffixes in local variables
-  # because this copy command needs to be kept in sync with the file creation paths
   provisioner "local-exec" {
     command = "scp -r -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ${local_file.instance_private_key_pem.filename} ${module.worker_kubeconfigs[count.index].kubeconfig_path} ${module.kube_proxy_kubeconfig.kubeconfig_path} ubuntu@${aws_instance.worker[count.index].public_dns}:~/"
   }
